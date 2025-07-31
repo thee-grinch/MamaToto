@@ -70,6 +70,47 @@ export const useHealthStore = defineStore('health', {
       }
     },
 
+    async updateHealthRecord(recordId, updateData) {
+      try {
+        this.loading = true
+        this.error = null
+        
+        const response = await api.put(`/health/records/${recordId}`, updateData)
+        
+        // Update in state
+        const index = this.healthRecords.findIndex(record => record.id === recordId)
+        if (index !== -1) {
+          this.healthRecords[index] = response.data
+        }
+        
+        return true
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Failed to update health record'
+        return false
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async deleteHealthRecord(recordId) {
+      try {
+        this.loading = true
+        this.error = null
+        
+        await api.delete(`/health/records/${recordId}`)
+        
+        // Remove from state
+        this.healthRecords = this.healthRecords.filter(record => record.id !== recordId)
+        
+        return true
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Failed to delete health record'
+        return false
+      } finally {
+        this.loading = false
+      }
+    },
+
     async fetchMentalHealthAssessments() {
       try {
         const response = await api.get('/health/mental-health')
@@ -93,6 +134,47 @@ export const useHealthStore = defineStore('health', {
       }
     },
 
+     async updateMentalHealthAssessment(assessmentId, updateData) {
+      try {
+        this.loading = true
+        this.error = null
+
+        const response = await api.put(`/health/mental-health/${assessmentId}`, updateData);
+
+        // Update in state
+        const index = this.mentalHealthAssessments.findIndex(assessment => assessment.id === assessmentId);
+        if (index !== -1) {
+          this.mentalHealthAssessments[index] = response.data;
+        }
+
+        return true;
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Failed to update mental health assessment';
+        return false;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async deleteMentalHealthAssessment(assessmentId) {
+      try {
+        this.loading = true;
+        this.error = null;
+
+        await api.delete(`/health/mental-health/${assessmentId}`);
+
+        // Remove from state
+        this.mentalHealthAssessments = this.mentalHealthAssessments.filter(assessment => assessment.id !== assessmentId);
+
+        return true;
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Failed to delete mental health assessment';
+        return false;
+      } finally {
+        this.loading = false;
+      }
+    },
+
     async fetchEmergencyContacts() {
       try {
         const response = await api.get('/health/emergency-contacts')
@@ -113,6 +195,47 @@ export const useHealthStore = defineStore('health', {
         return false
       } finally {
         this.loading = false
+      }
+    },
+
+     async updateEmergencyContact(contactId, updateData) {
+      try {
+        this.loading = true;
+        this.error = null;
+
+        const response = await api.put(`/health/emergency-contacts/${contactId}`, updateData);
+
+        // Update in state
+        const index = this.emergencyContacts.findIndex(contact => contact.id === contactId);
+        if (index !== -1) {
+          this.emergencyContacts[index] = response.data;
+        }
+
+        return true;
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Failed to update emergency contact';
+        return false;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async deleteEmergencyContact(contactId) {
+      try {
+        this.loading = true;
+        this.error = null;
+
+        await api.delete(`/health/emergency-contacts/${contactId}`);
+
+        // Remove from state
+        this.emergencyContacts = this.emergencyContacts.filter(contact => contact.id !== contactId);
+
+        return true;
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Failed to delete emergency contact';
+        return false;
+      } finally {
+        this.loading = false;
       }
     },
 

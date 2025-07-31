@@ -95,6 +95,30 @@ export const usePregnancyStore = defineStore('pregnancy', {
       }
     },
 
+    async deletePregnancy(pregnancyId) {
+      try {
+        this.loading = true;
+        this.error = null;
+
+        await api.delete(`/pregnancy/${pregnancyId}`);
+
+        // Remove from state
+        this.pregnancies = this.pregnancies.filter(p => p.id !== pregnancyId);
+
+        // Clear active pregnancy if it was the one deleted
+        if (this.activePregnancy?.id === pregnancyId) {
+          this.activePregnancy = null;
+        }
+
+        return true;
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Failed to delete pregnancy';
+        return false;
+      } finally {
+        this.loading = false;
+      }
+    },
+
     async fetchAppointments() {
       try {
         const response = await api.get('/pregnancy/appointments')
@@ -115,6 +139,47 @@ export const usePregnancyStore = defineStore('pregnancy', {
         return false
       } finally {
         this.loading = false
+      }
+    },
+
+    async updateAppointment(appointmentId, updateData) {
+      try {
+        this.loading = true;
+        this.error = null;
+
+        const response = await api.put(`/pregnancy/appointments/${appointmentId}`, updateData);
+
+        // Update in state
+        const index = this.appointments.findIndex(apt => apt.id === appointmentId);
+        if (index !== -1) {
+          this.appointments[index] = response.data;
+        }
+
+        return true;
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Failed to update appointment';
+        return false;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async deleteAppointment(appointmentId) {
+      try {
+        this.loading = true;
+        this.error = null;
+
+        await api.delete(`/pregnancy/appointments/${appointmentId}`);
+
+        // Remove from state
+        this.appointments = this.appointments.filter(apt => apt.id !== appointmentId);
+
+        return true;
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Failed to delete appointment';
+        return false;
+      } finally {
+        this.loading = false;
       }
     },
 

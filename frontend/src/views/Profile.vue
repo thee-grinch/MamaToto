@@ -120,7 +120,7 @@
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-lg font-medium text-gray-900">Emergency Contacts</h3>
               <button
-                @click="showEmergencyContactForm = true"
+                @click="showEmergencyContactForm = true; editingContact = null"
                 class="btn btn-sm btn-outline"
               >
                 Add Contact
@@ -140,7 +140,12 @@
                 </div>
                 <div class="flex items-center space-x-2">
                   <span v-if="contact.is_primary" class="badge badge-success text-xs">Primary</span>
-                  <button class="text-gray-400 hover:text-gray-600">
+                  <button @click="startEditingContact(contact)" class="text-gray-400 hover:text-gray-600">
+                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" />
+                    </svg>
+                  </button>
+                   <button @click="deleteContact(contact.id)" class="text-gray-400 hover:text-gray-600">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -183,7 +188,7 @@
               </button>
               
               <button
-                @click="confirmDeleteAccount"
+                @click="showDeleteAccountModal = true"
                 class="w-full btn btn-danger text-left"
               >
                 <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -201,7 +206,8 @@
     <!-- Emergency Contact Form Modal -->
     <EmergencyContactForm
       v-if="showEmergencyContactForm"
-      @close="showEmergencyContactForm = false"
+      :contact="editingContact"
+      @close="showEmergencyContactForm = false; editingContact = null"
       @saved="handleEmergencyContactSaved"
     />
 
@@ -210,6 +216,13 @@
       v-if="showChangePasswordForm"
       @close="showChangePasswordForm = false"
       @saved="handlePasswordChanged"
+    />
+
+    <!-- Delete Account Modal -->
+    <DeleteAccountModal
+      v-if="showDeleteAccountModal"
+      @confirm="handleDeleteAccountConfirm"
+      @cancel="handleDeleteAccountCancel"
     />
   </div>
 </template>
@@ -220,6 +233,7 @@ import { useUserStore } from '../stores/user'
 import { useHealthStore } from '../stores/health'
 import { formatDate } from '../utils/dates'
 import LoadingSpinner from '../components/common/LoadingSpinner.vue'
+import DeleteAccountModal from '../components/common/DeleteAccountModal.vue'
 
 // Import form components
 import EmergencyContactForm from '../components/forms/EmergencyContactForm.vue'
@@ -230,14 +244,17 @@ export default {
   components: {
     LoadingSpinner,
     EmergencyContactForm,
-    ChangePasswordForm
+    ChangePasswordForm,
+    DeleteAccountModal
   },
   setup() {
     const userStore = useUserStore()
     const healthStore = useHealthStore()
     
     const showEmergencyContactForm = ref(false)
+    const editingContact = ref(null);
     const showChangePasswordForm = ref(false)
+    const showDeleteAccountModal = ref(false);
     
     const profileForm = reactive({
       first_name: '',
@@ -264,9 +281,26 @@ export default {
       }
     }
 
+    const startEditingContact = (contact) => {
+      editingContact.value = contact;
+      showEmergencyContactForm.value = true;
+    };
+
+    const deleteContact = async (contactId) => {
+      if (confirm('Are you sure you want to delete this emergency contact?')) {
+        const success = await healthStore.deleteEmergencyContact(contactId);
+        if (success) {
+          // Show success message
+          console.log('Emergency contact deleted successfully');
+          healthStore.fetchEmergencyContacts(); // Refresh the list
+        }
+      }
+    };
+
     const handleEmergencyContactSaved = () => {
-      showEmergencyContactForm.value = false
-      healthStore.fetchEmergencyContacts()
+      showEmergencyContactForm.value = false;
+      editingContact.value = null; // Clear editing contact
+      healthStore.fetchEmergencyContacts(); // Refresh the list
     }
 
     const handlePasswordChanged = () => {
@@ -275,17 +309,41 @@ export default {
       console.log('Password changed successfully')
     }
 
-    const exportData = () => {
-      // TODO: Implement data export
-      console.log('Export user data')
-    }
+    const exportData = async () => {
+      try {
+        // Assuming an API endpoint for exporting data that returns a file blob
+        const response = await api.get('/user/export-data', { responseType: 'blob' });
+        const blob = new Blob([response.data]);
+        const link = document.createElement('a');
+        link.href = window.URL.createObjectURL(blob);
+        link.download = 'mamatoto_user_data.json'; // Or a dynamic filename
+        link.click();
+        window.URL.revokeObjectURL(link.href);
+        console.log('Data export initiated');
+      } catch (error) {
+        console.error('Data export failed:', error);
+        // Show error message
+      }
+    };
 
     const confirmDeleteAccount = () => {
-      if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-        // TODO: Implement account deletion
-        console.log('Delete account')
+      showDeleteAccountModal.value = true;
+    };
+
+    const handleDeleteAccountConfirm = async () => {
+      const success = await userStore.deleteAccount();
+      if (success) {
+        // Redirect to login or home page after deletion
+        // Assuming you have a router instance available
+        // router.push('/login'); 
+        console.log('Account deleted successfully');
       }
-    }
+       showDeleteAccountModal.value = false;
+    };
+
+     const handleDeleteAccountCancel = () => {
+      showDeleteAccountModal.value = false;
+    };
 
     onMounted(() => {
       initializeForm()
@@ -297,12 +355,18 @@ export default {
       healthStore,
       profileForm,
       showEmergencyContactForm,
+      editingContact,
       showChangePasswordForm,
+      showDeleteAccountModal,
       handleUpdateProfile,
+      startEditingContact,
+      deleteContact,
       handleEmergencyContactSaved,
       handlePasswordChanged,
       exportData,
       confirmDeleteAccount,
+      handleDeleteAccountConfirm,
+      handleDeleteAccountCancel,
       formatDate
     }
   }

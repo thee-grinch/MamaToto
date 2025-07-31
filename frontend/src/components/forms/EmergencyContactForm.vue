@@ -10,7 +10,7 @@
           <div class="sm:flex sm:items-start">
             <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
               <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                Add Emergency Contact
+                {{ contact ? 'Edit Emergency Contact' : 'Add Emergency Contact' }}
               </h3>
               <div class="mt-6 space-y-5">
                 <div>
@@ -43,7 +43,7 @@
             class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-pink-600 text-base font-medium text-white hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 sm:ml-3 sm:w-auto sm:text-sm"
             @click="saveContact"
           >
-            Save Contact
+            {{ contact ? 'Update Contact' : 'Save Contact' }}
           </button>
           <button
             type="button"
@@ -59,11 +59,18 @@
 </template>
 
 <script>
-import { reactive } from 'vue';
+import { reactive, watch } from 'vue';
 import { useHealthStore } from '../stores/health';
 
 export default {
   name: 'EmergencyContactForm',
+  props: {
+    contact: {
+      type: Object,
+      default: null
+    }
+  },
+  emits: ['close', 'saved'],
   setup(props, { emit }) {
     const healthStore = useHealthStore();
     const form = reactive({
@@ -74,6 +81,22 @@ export default {
       is_primary: false,
     });
 
+    const initializeForm = () => {
+      if (props.contact) {
+        Object.keys(form).forEach(key => {
+          if (props.contact[key] !== undefined) {
+            form[key] = props.contact[key];
+          }
+        });
+      } else {
+        // Reset form for adding new contact
+        Object.keys(form).forEach(key => {
+          form[key] = '';
+        });
+        form.is_primary = false;
+      }
+    };
+
     const saveContact = async () => {
       // Basic validation (can be enhanced)
       if (!form.name || !form.relationship || !form.phone) {
@@ -81,14 +104,24 @@ export default {
         return;
       }
       
-      // Assuming an action in healthStore to add emergency contact
-      const success = await healthStore.addEmergencyContact({
-        name: form.name,
-        relationship: form.relationship,
-        phone: form.phone,
-        address: form.address,
-        is_primary: form.is_primary,
-      });
+      let success;
+      if (props.contact) {
+        success = await healthStore.updateEmergencyContact(props.contact.id, {
+          name: form.name,
+          relationship: form.relationship,
+          phone: form.phone,
+          address: form.address,
+          is_primary: form.is_primary,
+        });
+      } else {
+        success = await healthStore.createEmergencyContact({
+          name: form.name,
+          relationship: form.relationship,
+          phone: form.phone,
+          address: form.address,
+          is_primary: form.is_primary,
+        });
+      }
 
       if (success) {
         emit('saved');
@@ -98,6 +131,13 @@ export default {
     const closeForm = () => {
       emit('close');
     };
+
+    watch(() => props.contact, () => {
+      initializeForm();
+    });
+
+    // Initialize form when component is created
+    initializeForm();
 
     return {
       form,

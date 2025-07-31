@@ -121,7 +121,7 @@
 </template>
 
 <script>
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, onMounted, watch } from 'vue'
 import { useHealthStore } from '../../stores/health'
 import LoadingSpinner from '../common/LoadingSpinner.vue'
 
@@ -172,7 +172,13 @@ export default {
         action_taken: form.action_taken || null
       }
 
-      const success = await healthStore.createHealthRecord(recordData)
+      let success
+      if (props.record) {
+        success = await healthStore.updateHealthRecord(props.record.id, recordData)
+      } else {
+        success = await healthStore.createHealthRecord(recordData)
+      }
+
       loading.value = false
 
       if (success) {
@@ -184,10 +190,21 @@ export default {
       initializeForm()
     })
 
+    watch(() => props.record, (newRecord) => {
+      if (newRecord) {
+        initializeForm();
+      }
+    });
+
     return {
       form,
       loading,
       handleSubmit
     }
   }
+}
 </script>
+
+<style scoped>
+/* Add any component-specific styles here if needed */
+</style>
