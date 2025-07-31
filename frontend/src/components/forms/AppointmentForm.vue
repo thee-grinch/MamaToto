@@ -60,7 +60,7 @@
 
 <script>
 import { reactive, watch } from 'vue';
-import { usePregnancyStore } from '../stores/pregnancy';
+import { usePregnancyStore } from '../../stores/pregnancy'; // Corrected import path
 
 export default {
   name: 'AppointmentForm',
@@ -100,6 +100,7 @@ export default {
 
       let success;
       if (props.appointment) {
+        // Assuming updateAppointment action exists in pregnancyStore
         success = await pregnancyStore.updateAppointment(props.appointment.id, {
            scheduled_date: form.scheduled_date,
            scheduled_time: form.scheduled_time || null,

@@ -1,210 +1,83 @@
-// src/stores/pregnancy.js
-import { defineStore } from 'pinia'
-import api from '../utils/api'
+// frontend/src/stores/pregnancy.js
+import { defineStore } from 'pinia';
+import axios from 'axios';
 
 export const usePregnancyStore = defineStore('pregnancy', {
   state: () => ({
     pregnancies: [],
-    activePregnancy: null,
-    appointments: [],
-    weeklyInfo: null,
-    dangerSigns: [],
+    activePregnancy: null, // To hold the currently selected or active pregnancy
+    appointments: {}, // To store appointments keyed by pregnancy ID
     loading: false,
     error: null
   }),
-
-  getters: {
-    currentWeek: (state) => {
-      return state.activePregnancy?.current_week || null
-    },
-    
-    trimester: (state) => {
-      return state.activePregnancy?.trimester || null
-    },
-    
-    dueDate: (state) => {
-      return state.activePregnancy?.due_date || null
-    },
-    
-    upcomingAppointments: (state) => {
-      const today = new Date().toISOString().split('T')[0]
-      return state.appointments.filter(apt => 
-        apt.scheduled_date >= today && !apt.completed
-      ).slice(0, 3)
-    }
-  },
-
   actions: {
     async fetchPregnancies() {
+      this.loading = true;
+      this.error = null;
       try {
-        this.loading = true
-        const response = await api.get('/pregnancy')
-        this.pregnancies = response.data
-        
-        // Set active pregnancy
-        this.activePregnancy = this.pregnancies.find(p => p.is_active) || null
-      } catch (error) {
-        this.error = error.response?.data?.detail || 'Failed to fetch pregnancies'
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async createPregnancy(pregnancyData) {
-      try {
-        this.loading = true
-        this.error = null
-        
-        const response = await api.post('/pregnancy', pregnancyData)
-        this.pregnancies.unshift(response.data)
-        this.activePregnancy = response.data
-        
-        return true
-      } catch (error) {
-        this.error = error.response?.data?.detail || 'Failed to create pregnancy record'
-        return false
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async updatePregnancy(pregnancyId, updateData) {
-      try {
-        this.loading = true
-        this.error = null
-        
-        const response = await api.put(`/pregnancy/${pregnancyId}`, updateData)
-        
-        // Update in list
-        const index = this.pregnancies.findIndex(p => p.id === pregnancyId)
-        if (index !== -1) {
-          this.pregnancies[index] = response.data
-        }
-        
-        // Update active pregnancy if it's the same one
-        if (this.activePregnancy?.id === pregnancyId) {
-          this.activePregnancy = response.data
-        }
-        
-        return true
-      } catch (error) {
-        this.error = error.response?.data?.detail || 'Failed to update pregnancy'
-        return false
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async deletePregnancy(pregnancyId) {
-      try {
-        this.loading = true;
-        this.error = null;
-
-        await api.delete(`/pregnancy/${pregnancyId}`);
-
-        // Remove from state
-        this.pregnancies = this.pregnancies.filter(p => p.id !== pregnancyId);
-
-        // Clear active pregnancy if it was the one deleted
-        if (this.activePregnancy?.id === pregnancyId) {
-          this.activePregnancy = null;
-        }
-
-        return true;
-      } catch (error) {
-        this.error = error.response?.data?.detail || 'Failed to delete pregnancy';
-        return false;
+        const response = await axios.get('/api/pregnancies'); // Hypothetical API endpoint
+        this.pregnancies = response.data;
+      } catch (err) {
+        this.error = err.message;
+        console.error('Error fetching pregnancies:', err);
+        throw err;
       } finally {
         this.loading = false;
       }
     },
-
-    async fetchAppointments() {
-      try {
-        const response = await api.get('/pregnancy/appointments')
-        this.appointments = response.data
-      } catch (error) {
-        this.error = error.response?.data?.detail || 'Failed to fetch appointments'
+    setActivePregnancy(pregnancyId) {
+      this.activePregnancy = this.pregnancies.find(p => p.id === pregnancyId) || null;
+      // Optionally fetch appointments for the active pregnancy immediately
+      if (this.activePregnancy && !this.appointments[pregnancyId]) {
+        this.fetchAppointments(pregnancyId);
       }
     },
+    async fetchAppointments(pregnancyId) {
+      if (this.appointments[pregnancyId]) {
+        // Appointments already in store for this pregnancy, no need to refetch
+        return this.appointments[pregnancyId];
+      }
 
-    async createAppointment(appointmentData) {
+      this.loading = true;
+      this.error = null;
       try {
-        this.loading = true
-        const response = await api.post('/pregnancy/appointments', appointmentData)
-        this.appointments.push(response.data)
-        return true
-      } catch (error) {
-        this.error = error.response?.data?.detail || 'Failed to create appointment'
-        return false
+        const response = await axios.get(`/api/pregnancies/${pregnancyId}/appointments`); // Hypothetical API endpoint
+        this.appointments[pregnancyId] = response.data;
+        return response.data;
+      } catch (err) {
+        this.error = err.message;
+        console.error(`Error fetching appointments for pregnancy ${pregnancyId}:`, err);
+        throw err;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
-
-    async updateAppointment(appointmentId, updateData) {
+    async createAppointment(pregnancyId, appointmentData) {
+      this.loading = true;
+      this.error = null;
       try {
-        this.loading = true;
-        this.error = null;
-
-        const response = await api.put(`/pregnancy/appointments/${appointmentId}`, updateData);
-
-        // Update in state
-        const index = this.appointments.findIndex(apt => apt.id === appointmentId);
-        if (index !== -1) {
-          this.appointments[index] = response.data;
+        const response = await axios.post(`/api/pregnancies/${pregnancyId}/appointments`, appointmentData);
+        // Add the new appointment to the state
+        if (!this.appointments[pregnancyId]) {
+          this.appointments[pregnancyId] = [];
         }
-
-        return true;
-      } catch (error) {
-        this.error = error.response?.data?.detail || 'Failed to update appointment';
-        return false;
+        this.appointments[pregnancyId].push(response.data);
+        return response.data;
+      } catch (err) {
+        this.error = err.message;
+        console.error(`Error creating appointment for pregnancy ${pregnancyId}:`, err);
+        throw err;
       } finally {
         this.loading = false;
       }
-    },
-
-    async deleteAppointment(appointmentId) {
-      try {
-        this.loading = true;
-        this.error = null;
-
-        await api.delete(`/pregnancy/appointments/${appointmentId}`);
-
-        // Remove from state
-        this.appointments = this.appointments.filter(apt => apt.id !== appointmentId);
-
-        return true;
-      } catch (error) {
-        this.error = error.response?.data?.detail || 'Failed to delete appointment';
-        return false;
-      } finally {
-        this.loading = false;
-      }
-    },
-
-    async fetchWeeklyInfo() {
-      if (!this.activePregnancy) return
-      
-      try {
-        const response = await api.post('/pregnancy/weekly-info')
-        this.weeklyInfo = response.data
-      } catch (error) {
-        console.error('Failed to fetch weekly info:', error)
-      }
-    },
-
-    async fetchDangerSigns() {
-      try {
-        const response = await api.get('/pregnancy/danger-signs')
-        this.dangerSigns = response.data.danger_signs
-      } catch (error) {
-        console.error('Failed to fetch danger signs:', error)
-      }
-    },
-
-    clearError() {
-      this.error = null
+    }
+    // You can add more actions here, e.g., updateAppointment, deleteAppointment, addPregnancy
+  },
+  getters: {
+    getAllPregnancies: (state) => state.pregnancies,
+    getActivePregnancy: (state) => state.activePregnancy,
+    getAppointmentsByPregnancyId: (state) => (pregnancyId) => {
+      return state.appointments[pregnancyId] || [];
     }
   }
-})
+});
