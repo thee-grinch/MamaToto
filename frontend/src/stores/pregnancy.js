@@ -5,17 +5,19 @@ import axios from 'axios';
 export const usePregnancyStore = defineStore('pregnancy', {
   state: () => ({
     pregnancies: [],
-    activePregnancy: null, // To hold the currently selected or active pregnancy
-    appointments: {}, // To store appointments keyed by pregnancy ID
+    activePregnancy: null,
+    appointments: {},
     loading: false,
-    error: null
+    error: null,
+    loadingAppointments: false,
+    errorAppointments: null
   }),
   actions: {
     async fetchPregnancies() {
       this.loading = true;
       this.error = null;
       try {
-        const response = await axios.get('/api/pregnancies'); // Hypothetical API endpoint
+        const response = await axios.get('/api/pregnancies');
         this.pregnancies = response.data;
       } catch (err) {
         this.error = err.message;
@@ -27,51 +29,69 @@ export const usePregnancyStore = defineStore('pregnancy', {
     },
     setActivePregnancy(pregnancyId) {
       this.activePregnancy = this.pregnancies.find(p => p.id === pregnancyId) || null;
-      // Optionally fetch appointments for the active pregnancy immediately
       if (this.activePregnancy && !this.appointments[pregnancyId]) {
         this.fetchAppointments(pregnancyId);
       }
     },
     async fetchAppointments(pregnancyId) {
       if (this.appointments[pregnancyId]) {
-        // Appointments already in store for this pregnancy, no need to refetch
         return this.appointments[pregnancyId];
       }
 
-      this.loading = true;
-      this.error = null;
+      this.loadingAppointments = true;
+      this.errorAppointments = null;
       try {
-        const response = await axios.get(`/api/pregnancies/${pregnancyId}/appointments`); // Hypothetical API endpoint
+        const response = await axios.get(`/api/pregnancies/${pregnancyId}/appointments`);
         this.appointments[pregnancyId] = response.data;
         return response.data;
       } catch (err) {
-        this.error = err.message;
+        this.errorAppointments = err.message;
         console.error(`Error fetching appointments for pregnancy ${pregnancyId}:`, err);
         throw err;
       } finally {
-        this.loading = false;
+        this.loadingAppointments = false;
       }
     },
-    async createAppointment(pregnancyId, appointmentData) {
-      this.loading = true;
-      this.error = null;
+    async createAppointment(appointmentData) {
+      this.loadingAppointments = true;
+      this.errorAppointments = null;
       try {
-        const response = await axios.post(`/api/pregnancies/${pregnancyId}/appointments`, appointmentData);
-        // Add the new appointment to the state
-        if (!this.appointments[pregnancyId]) {
-          this.appointments[pregnancyId] = [];
+        const response = await axios.post(`/api/pregnancies/${appointmentData.pregnancy_id}/appointments`, appointmentData);
+        if (!this.appointments[appointmentData.pregnancy_id]) {
+          this.appointments[appointmentData.pregnancy_id] = [];
         }
-        this.appointments[pregnancyId].push(response.data);
+        this.appointments[appointmentData.pregnancy_id].push(response.data);
         return response.data;
       } catch (err) {
-        this.error = err.message;
-        console.error(`Error creating appointment for pregnancy ${pregnancyId}:`, err);
+        this.errorAppointments = err.message;
+        console.error(`Error creating appointment for pregnancy ${appointmentData.pregnancy_id}:`, err);
         throw err;
       } finally {
-        this.loading = false;
+        this.loadingAppointments = false;
       }
+    },
+
+    async updateAppointment(appointmentId, appointmentData) {
+        this.loadingAppointments = true;
+        this.errorAppointments = null;
+        try {
+            const response = await axios.put(`/api/appointments/${appointmentId}`, appointmentData);
+            for (const pregnancyId in this.appointments) {
+                const index = this.appointments[pregnancyId].findIndex(appt => appt.id === response.data.id);
+                if (index !== -1) {
+                    this.appointments[pregnancyId].splice(index, 1, response.data);
+                    break;
+                }
+            }
+            return response.data;
+        } catch (err) {
+            this.errorAppointments = err.message;
+            console.error(`Error updating appointment ${appointmentId}:`, err);
+            throw err;
+        } finally {
+            this.loadingAppointments = false;
+        }
     }
-    // You can add more actions here, e.g., updateAppointment, deleteAppointment, addPregnancy
   },
   getters: {
     getAllPregnancies: (state) => state.pregnancies,

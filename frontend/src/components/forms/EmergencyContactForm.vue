@@ -60,7 +60,7 @@
 
 <script>
 import { reactive, watch } from 'vue';
-import { useHealthStore } from '../stores/health';
+import { useHealthStore } from '../../stores/health'; // Corrected import path
 
 export default {
   name: 'EmergencyContactForm',
@@ -103,28 +103,22 @@ export default {
         alert('Please fill in name, relationship, and phone number.');
         return;
       }
-      
-      let success;
-      if (props.contact) {
-        success = await healthStore.updateEmergencyContact(props.contact.id, {
-          name: form.name,
-          relationship: form.relationship,
-          phone: form.phone,
-          address: form.address,
-          is_primary: form.is_primary,
-        });
-      } else {
-        success = await healthStore.createEmergencyContact({
-          name: form.name,
-          relationship: form.relationship,
-          phone: form.phone,
-          address: form.address,
-          is_primary: form.is_primary,
-        });
-      }
 
-      if (success) {
+      try {
+        // Assuming saveEmergencyContact action handles both create and update
+        await healthStore.saveEmergencyContact({
+           id: props.contact?.id,
+           name: form.name,
+           relationship: form.relationship,
+           phone: form.phone,
+           address: form.address,
+           is_primary: form.is_primary,
+        });
         emit('saved');
+      } catch (error) {
+        console.error('Error saving emergency contact:', error);
+        // Display a user-friendly error message
+        alert(`Failed to save emergency contact: ${error.message || 'An unexpected error occurred.'}`);
       }
     };
 
@@ -138,6 +132,7 @@ export default {
 
     // Initialize form when component is created
     initializeForm();
+
 
     return {
       form,

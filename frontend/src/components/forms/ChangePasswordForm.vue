@@ -15,33 +15,15 @@
               <div class="mt-6 space-y-5">
                 <div>
                   <label for="current-password" class="form-label">Current Password *</label>
-                  <input
-                    id="current-password"
-                    v-model="form.current_password"
-                    type="password"
-                    required
-                    class="form-input"
-                  />
+                  <input id="current-password" v-model="form.current_password" type="password" required class="form-input" />
                 </div>
                 <div>
                   <label for="new-password" class="form-label">New Password *</label>
-                  <input
-                    id="new-password"
-                    v-model="form.new_password"
-                    type="password"
-                    required
-                    class="form-input"
-                  />
+                  <input id="new-password" v-model="form.new_password" type="password" required class="form-input" />
                 </div>
                 <div>
                   <label for="confirm-password" class="form-label">Confirm New Password *</label>
-                  <input
-                    id="confirm-password"
-                    v-model="form.confirm_password"
-                    type="password"
-                    required
-                    class="form-input"
-                  />
+                  <input id="confirm-password" v-model="form.confirm_password" type="password" required class="form-input" />
                 </div>
               </div>
             </div>
@@ -70,10 +52,11 @@
 
 <script>
 import { reactive } from 'vue';
-import { useUserStore } from '../stores/user';
+import { useUserStore } from '../../stores/user'; // Corrected import path
 
 export default {
   name: 'ChangePasswordForm',
+  emits: ['close'],
   setup(props, { emit }) {
     const userStore = useUserStore();
     const form = reactive({
@@ -83,25 +66,21 @@ export default {
     });
 
     const changePassword = async () => {
-      // Basic validation (can be enhanced)
-      if (!form.current_password || !form.new_password || !form.confirm_password) {
-        alert('Please fill in all password fields.');
-        return;
-      }
-
+      // Basic validation
       if (form.new_password !== form.confirm_password) {
         alert('New password and confirm password do not match.');
         return;
       }
 
-      // Assuming an action in userStore to change password
-      const success = await userStore.changePassword({
-        current_password: form.current_password,
-        new_password: form.new_password,
-      });
-
-      if (success) {
-        emit('saved');
+      try {
+        // Assuming a changePassword action exists in userStore
+        await userStore.changePassword(form.current_password, form.new_password);
+        alert('Password changed successfully!');
+        emit('close'); // Close the form on success
+      } catch (error) {
+        console.error('Error changing password:', error);
+        // Display a user-friendly error message based on the error
+        alert(`Failed to change password: ${error.message || 'An unexpected error occurred.'}`);
       }
     };
 
