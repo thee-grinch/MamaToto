@@ -99,6 +99,45 @@ export const useUserStore = defineStore('user', {
       }
     },
 
+    async changePassword(passwordData) {
+      try {
+        this.loading = true
+        this.error = null
+        
+        // Assuming your backend has a PUT endpoint for changing password
+        const response = await api.put('/auth/change-password', passwordData)
+        
+        // Optionally, handle success message or re-authentication if needed
+        console.log('Password changed successfully', response.data);
+        return true
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Password change failed'
+        return false
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async deleteAccount() {
+      try {
+        this.loading = true
+        this.error = null
+        
+        // Assuming your backend has a DELETE endpoint for account deletion
+        await api.delete('/auth/me')
+        
+        // Log out the user after successful deletion
+        this.logout()
+        
+        return true
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Account deletion failed'
+        return false
+      } finally {
+        this.loading = false
+      }
+    },
+
     logout() {
       this.user = null
       this.isAuthenticated = false

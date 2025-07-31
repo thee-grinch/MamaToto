@@ -37,7 +37,6 @@ export const useChildrenStore = defineStore('children', {
     },
     
     upcomingVaccinations: (state) => {
-      const upcoming = []
       const today = new Date().toISOString().split('T')[0]
       const nextMonth = new Date()
       nextMonth.setMonth(nextMonth.getMonth() + 1)
@@ -103,6 +102,34 @@ export const useChildrenStore = defineStore('children', {
       }
     },
 
+    async deleteChild(childId) {
+      try {
+        this.loading = true
+        this.error = null
+        
+        await api.delete(`/children/${childId}`)
+        
+        // Remove child from state
+        this.children = this.children.filter(child => child.id !== childId)
+        
+        // Clear selected child if it was the one deleted
+        if (this.selectedChild?.id === childId) {
+          this.selectedChild = null;
+        }
+        
+        // Remove associated vaccinations and growth records from state
+        delete this.vaccinations[childId];
+        delete this.growthRecords[childId];
+
+        return true
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Failed to delete child'
+        return false
+      } finally {
+        this.loading = false
+      }
+    },
+
     async fetchChildVaccinations(childId) {
       try {
         const response = await api.get(`/children/${childId}/vaccinations`)
@@ -131,6 +158,47 @@ export const useChildrenStore = defineStore('children', {
       }
     },
 
+    async updateVaccination(childId, vaccinationId, updateData) {
+      try {
+        this.loading = true
+        const response = await api.put(`/children/${childId}/vaccinations/${vaccinationId}`, updateData)
+        
+        // Update in state
+        const index = this.vaccinations[childId].findIndex(v => v.id === vaccinationId)
+        if (index !== -1) {
+          this.vaccinations[childId][index] = response.data
+        }
+        
+        return true
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Failed to update vaccination'
+        return false
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async deleteVaccination(childId, vaccinationId) {
+      try {
+        this.loading = true
+        this.error = null
+        
+        await api.delete(`/children/${childId}/vaccinations/${vaccinationId}`)
+        
+        // Remove from state
+        if (this.vaccinations[childId]) {
+          this.vaccinations[childId] = this.vaccinations[childId].filter(v => v.id !== vaccinationId)
+        }
+
+        return true
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Failed to delete vaccination'
+        return false
+      } finally {
+        this.loading = false
+      }
+    },
+
     async fetchChildGrowthRecords(childId) {
       try {
         const response = await api.get(`/children/${childId}/growth`)
@@ -153,6 +221,47 @@ export const useChildrenStore = defineStore('children', {
         return true
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to create growth record'
+        return false
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async updateGrowthRecord(childId, growthId, updateData) {
+      try {
+        this.loading = true
+        const response = await api.put(`/children/${childId}/growth/${growthId}`, updateData)
+        
+        // Update in state
+        const index = this.growthRecords[childId].findIndex(g => g.id === growthId)
+        if (index !== -1) {
+          this.growthRecords[childId][index] = response.data
+        }
+        
+        return true
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Failed to update growth record'
+        return false
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async deleteGrowthRecord(childId, growthId) {
+      try {
+        this.loading = true
+        this.error = null
+        
+        await api.delete(`/children/${childId}/growth/${growthId}`)
+        
+        // Remove from state
+        if (this.growthRecords[childId]) {
+          this.growthRecords[childId] = this.growthRecords[childRecords[childId].filter(g => g.id !== growthId)
+        }
+
+        return true
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Failed to delete growth record'
         return false
       } finally {
         this.loading = false
