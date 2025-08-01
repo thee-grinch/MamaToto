@@ -1,55 +1,52 @@
-# To learn more about how to use Nix to configure your environment
-# see: https://firebase.google.com/docs/studio/customize-workspace
-{ pkgs, ... }: {
-  # Which nixpkgs channel to use.
-  channel = "stable-24.05"; # or "unstable"
+# .idx/dev.nix
 
-  # Use https://search.nixos.org/packages to find packages
+{ pkgs, ... }: {
+  channel = "stable-24.05";
+
   packages = [
-    # pkgs.go
-    # pkgs.python311
+    pkgs.python312
     pkgs.python312Packages.pip
-    # pkgs.nodejs_20
-    # pkgs.nodePackages.nodemon
+    pkgs.python312Packages.uvicorn
+    pkgs.python312Packages.setuptools
+    pkgs.python312Packages.wheel
   ];
 
-  # Sets environment variables in the workspace
-  env = {};
+  env = {
+    PYTHONUNBUFFERED = "1";
+  };
+
   idx = {
-    # Search for the extensions you want on https://open-vsx.org/ and use "publisher.id"
     extensions = [
-      # "vscodevim.vim"
+      "ms-python.python"
     ];
 
-    # Enable previews
     previews = {
       enable = true;
       previews = {
-        # web = {
-        #   # Example: run "npm run dev" with PORT set to IDX's defined port for previews,
-        #   # and show it in IDX's web preview panel
-        #   command = ["npm" "run" "dev"];
-        #   manager = "web";
-        #   env = {
-        #     # Environment variables to set for your server
-        #     PORT = "$PORT";
-        #   };
-        # };
+        backend = {
+          command = [
+            "sh" "-c"
+            "cd mamatoto-backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+          ];
+          manager = "web";
+          env = {
+            PORT = "8000";
+          };
+        };
       };
     };
 
-    # Workspace lifecycle hooks
     workspace = {
-      # Runs when a workspace is first created
       onCreate = {
-        # Example: install JS dependencies from NPM
-        # npm-install = "npm install";
+        install-deps = ''
+          cd mamatoto-backend
+          pip install --upgrade pip setuptools wheel
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+        '';
       };
-      # Runs when the workspace is (re)started
-      onStart = {
-        # Example: start a background task to watch and re-build backend code
-        # watch-backend = "npm run watch-backend";
-      };
+      onStart = { };
     };
   };
 }
