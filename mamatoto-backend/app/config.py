@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     api_description: str = "Maternal and Child Health Platform API"
     
     # CORS
-    allowed_origins: list = ["http://localhost:3000", "http://localhost:5173"]
+    allowed_origins: list = ["http://localhost:3000","https://3000-firebase-mamatotogit-1753969026312.cluster-64pjnskmlbaxowh5lzq6i7v4ra.cloudworkstations.dev", "http://localhost:5173"]
     
     # OpenAI (for chatbot)
     openai_api_key: str = ""

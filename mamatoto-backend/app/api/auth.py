@@ -8,8 +8,14 @@ from ..core.security import verify_password, get_password_hash, create_access_to
 from ..models.user import User
 from ..schemas.user import UserCreate, UserResponse, UserUpdate, Token
 from ..config import settings
+from pydantic import BaseModel # Import BaseModel for Pydantic schemas
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
+
+# Define schema for password change request
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
 
 @router.post("/register", response_model=UserResponse)
 def register(user: UserCreate, db: Session = Depends(get_db)):
@@ -20,7 +26,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
-    
+
     # Create new user
     hashed_password = get_password_hash(user.password)
     db_user = User(
@@ -32,7 +38,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         location=user.location,
         preferred_language=user.preferred_language
     )
-    
+
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -47,7 +53,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     access_token = create_access_token(
         subject=user.id, expires_delta=access_token_expires
@@ -66,7 +72,40 @@ def update_current_user(
 ):
     for field, value in user_update.dict(exclude_unset=True).items():
         setattr(current_user, field, value)
-    
+
     db.commit()
     db.refresh(current_user)
     return current_user
+
+@router.put("/change-password", status_code=status.HTTP_200_OK)
+def change_password(
+    password_data: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Verify current password
+    if not verify_password(password_data.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect current password"
+        )
+
+    # Hash the new password and update
+    hashed_password = get_password_hash(password_data.new_password)
+    current_user.hashed_password = hashed_password
+
+    db.commit()
+    # db.refresh(current_user) # Not strictly necessary after password change
+
+    return {"message": "Password updated successfully"}
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_account(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Delete the user
+    db.delete(current_user)
+    db.commit()
+
+    return # No content for 204
