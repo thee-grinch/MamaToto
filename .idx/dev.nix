@@ -1,64 +1,52 @@
 { pkgs, ... }: {
-  channel = "stable-24.05";
-
   packages = [
-    (pkgs.python312.withPackages (ps: with ps; [
-      pip
-      setuptools
-      wheel
-      fastapi
-      uvicorn
-      sqlalchemy
-      pydantic
-      python-jose
-      passlib
-      python-dateutil
-      alembic
-      gunicorn
-      httpx
-      pytest
-      pytest-asyncio
-    ]))
+    pkgs.python3
+    pkgs.nodejs_20
+    pkgs.sqlite
+    pkgs.vite
   ];
-
-  env = {
-    PYTHONUNBUFFERED = "1";
-    PYTHONPATH = "./mamatoto-backend";  # Add this to ensure Python can find your modules
-  };
 
   idx = {
     extensions = [
       "ms-python.python"
+      "Vue.volar"
     ];
+
+    workspace = {
+      onCreate = {
+        # Create venv and install requirements if system packages are missing
+        backend-setup = ''
+          cd MamatotoAI/backend
+          if ! python -c "import fastapi" 2>/dev/null; then
+            python -m venv .venv
+            . .venv/bin/activate
+            pip install -r requirements.txt
+          fi
+        '';
+        frontend-install = "cd MamatotoAI/frontend && npm install";
+      };
+      
+      onStart = {
+        # Activate venv if it exists, otherwise proceed (may fail if deps missing)
+        backend-dev = ''
+          cd MamatotoAI/backend
+          if [ -d .venv ]; then
+            . .venv/bin/activate
+          fi
+          uvicorn main:app --reload
+        '';
+        frontend-dev = "cd MamatotoAI/frontend && npm run dev";
+      };
+    };
 
     previews = {
       enable = true;
       previews = {
-        backend = {
-          command = [
-            "sh" "-c"
-            "cd mamatoto-backend && python -m pip install -e . && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
-          ];
+        web = {
+          command = ["npm" "run" "dev" "--" "--port" "$PORT"];
+          cwd = "MamatotoAI/frontend";
           manager = "web";
-          env = {
-            PORT = "8000";
-          PYTHONPATH = "./mamatoto-backend";
-          };
         };
-      };
-    };
-
-    workspace = {
-      onCreate = {
-        install-extra = ''
-          cd mamatoto-backend
-          python -m pip install --upgrade pip setuptools wheel
-          python -m pip install pydantic-settings python-multipart
-          python -m pip install -e .
-          if [ -f requirements.txt ]; then
-            python -m pip install -r requirements.txt
-          fi
-        '';
       };
     };
   };
